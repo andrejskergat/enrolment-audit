@@ -212,7 +212,7 @@ function step2() {
   }).join('')+'</div>';
   return '<button class="btn-back" id="backBtn">&#8592; Back</button>'
     +'<h2 class="step-title">Your ad spend</h2>'
-    +'<p class="step-sub">We\'ll calculate your blended cost per lead and enrolment.</p>'
+    +'<p class="step-sub">We\'ll calculate your cost per enquiry and enrolment.</p>'
     +'<div class="field"><label>Total Monthly Ad Spend (SGD)</label><p class="field-hint">All paid channels combined — Meta, Google, TikTok etc.</p><div class="inp-wrap"><span class="inp-prefix">S$</span><input class="inp has-prefix" id="f_adSpend" type="number" placeholder="e.g. 1500" value="'+esc(s.adSpend)+'"></div></div>'
     +'<div class="field"><label>Which platforms are you running on?</label><p class="field-hint">Select all that apply</p>'+pgrid+'</div>'
     +'<button class="btn-next" id="nextBtn"'+(s.adSpend&&s.platforms.length>0?'':' disabled')+'>Continue &#8594;</button>';
@@ -312,25 +312,25 @@ function calc() {
   if(rt>15){
     issues.push({p:'HIGH',stage:'📍 Lead Response',
       a:'Set up an automated WhatsApp reply within 5 mins of every enquiry — use a template with a trial CTA',
-      i:'SG parents choose the first centre that replies. You\'re responding in '+(s.responseTime==='1440'?'24h+':s.responseTime+' min')+'. Every minute lost costs you leads.'});
+      i:'Most parents enquire at multiple centres at the same time. You\'re responding in '+(s.responseTime==='1440'?'24h+':s.responseTime+' min')+' — by then, they\'ve likely already heard back from someone else.'});
   } else {
     positives.push({p:'GOOD',stage:'✅ Lead Response',
       a:'Your response time of under '+(rt<=5?'5 min':'15 min')+' is strong',
-      i:'You\'re ahead of most SG centres here. Fast response is one of the highest-leverage conversion factors.'});
+      i:'You\'re ahead of most SG centres here. Replying fast is one of the simplest things you can do to get more enrolments.'});
   }
 
   if(s.followUp==='once'||s.followUp==='never'||!s.followUp){
     issues.push({p:'HIGH',stage:'📍 Lead Response',
       a:'Build a 3-touch follow-up sequence: Day 1 (value), Day 3 (social proof), Day 7 (urgency)',
-      i:'Most enrolments happen after the 2nd or 3rd touchpoint. One message and moving on leaves money on the table.'});
+      i:'Most parents need a few reminders before they commit. If you only message once, you\'re leaving a lot of enrolments behind.'});
   } else if(s.followUp==='manual'){
     issues.push({p:'MEDIUM',stage:'📍 Lead Response',
       a:'Systematise your follow-up — move from ad-hoc to a fixed Day 1 / Day 3 / Day 7 sequence',
-      i:'Manual follow-up gets skipped when it\'s busy. A scripted sequence runs even on your worst days.'});
+      i:'When things get busy, follow-ups get skipped. A simple Day 1, Day 3, Day 7 message sequence means no lead falls through the cracks.'});
   } else {
     positives.push({p:'GOOD',stage:'✅ Lead Response',
       a:'Structured follow-up sequence in place — this is rare and valuable',
-      i:'Centres with a fixed follow-up sequence convert 20–30% more leads than those who follow up ad-hoc.'});
+      i:'Having a follow-up process in place puts you ahead of most centres. Keep it consistent and it will keep paying off.'});
   }
 
   // TRIAL / TOUR
@@ -350,11 +350,11 @@ function calc() {
     } else if(trialCtr>=BM.trialBm){
       positives.push({p:'GOOD',stage:'✅ '+(isPreschool?'Tour':'Trial')+' → Enrolment',
         a:'Your '+(isPreschool?'tour':'trial')+' conversion of '+trialCtr+'% is above the '+BM.trialBm+'% benchmark for '+BM.label,
-        i:'Your close rate once '+(isPreschool?'families visit':'parents attend')+' is strong. The growth lever now is increasing the number of leads who actually book and show up to a '+(isPreschool?'tour':'trial')+'.'});
+        i:'Good close rate once '+(isPreschool?'families visit':'parents attend')+'. Now focus on getting more people to actually show up to the '+(isPreschool?'tour':'trial')+' in the first place.'});
     } else {
       issues.push({p:'MEDIUM',stage:'📍 '+(isPreschool?'Tour':'Trial')+' → Enrolment',
         a:'You offer '+(isPreschool?'tours':'trials')+' but haven\'t tracked conversion — the benchmark for '+BM.label+' is '+BM.trialBm+'%',
-        i:'Start tracking '+(isPreschool?'tour':'trial')+'-to-enrolment this week. It\'s the clearest signal of where your pitch and experience needs work.'});
+        i:'You\'re offering '+(isPreschool?'tours':'trials')+' but not tracking how many turn into enrolments. Start counting — it\'s the clearest way to know if your pitch is working.'});
     }
   }
 
@@ -362,38 +362,38 @@ function calc() {
   if(ctr<BM.ctr){
     issues.push({p:'HIGH',stage:'📍 Overall Conversion',
       a:'Your lead-to-enrolment rate of '+(ctr*100).toFixed(1)+'% is below the '+Math.round(BM.ctr*100)+'% benchmark for '+BM.label,
-      i:'Closing the gap to '+Math.round(BM.ctr*100)+'% could recover S$'+Math.round(extra*ltv).toLocaleString()+'/month in lifetime value. Focus on reducing drop-off at whichever funnel stage is losing the most.'});
+      i:'Out of every 100 enquiries you get, only '+Math.round(ctr*100)+' are turning into enrolments. The benchmark for centres like yours is '+Math.round(BM.ctr*100)+'. Closing that gap is where the biggest revenue recovery is.'});
   } else {
     positives.push({p:'GOOD',stage:'✅ Overall Conversion',
       a:'Your lead-to-enrolment rate of '+(ctr*100).toFixed(1)+'% is at or above the '+Math.round(BM.ctr*100)+'% benchmark',
-      i:'Strong conversion. Your focus should be on increasing lead volume and reducing CPL rather than fixing the funnel.'});
+      i:'Good conversion rate. The focus now is getting more enquiries in the door at a lower cost per enquiry.'});
   }
 
   // AD PERFORMANCE
   if(cpl>BM.cpl){
     issues.push({p:'MEDIUM',stage:'📍 Ad Performance',
-      a:'A/B test your ad creative — your blended CPL of S$'+cpl.toFixed(0)+' is above the S$'+BM.cpl+' benchmark for '+BM.label,
-      i:'Test one variable at a time: headline, image, audience. A single change often drops CPL by 30–40%.'});
+      a:'Your cost per enquiry of S$'+cpl.toFixed(0)+' is above the S$'+BM.cpl+' benchmark for '+BM.label+' — your ads need a refresh',
+      i:'You\'re paying S$'+cpl.toFixed(0)+' for every enquiry. The typical centre like yours pays around S$'+BM.cpl+'. Try changing one thing at a time — your ad image, headline, or the audience you\'re targeting.'});
   } else {
     positives.push({p:'GOOD',stage:'✅ Ad Performance',
-      a:'Your blended CPL of S$'+cpl.toFixed(0)+' is below the S$'+BM.cpl+' benchmark',
-      i:'Efficient spend. Protect this by not making too many ad changes at once — isolate variables when testing.'});
+      a:'Your cost per enquiry of S$'+cpl.toFixed(0)+' is below the S$'+BM.cpl+' benchmark — your ads are working well',
+      i:'Your ads are bringing in enquiries at a good cost. Don\'t make too many changes at once — when something is working, let it run.'});
   }
 
   if(cpe>BM.cpe){
     issues.push({p:'MEDIUM',stage:'📍 Ad Performance',
       a:'Your ad cost per enrolment of S$'+cpe.toFixed(0)+' is above the S$'+BM.cpe+' benchmark',
-      i:'This is driven by a combination of CPL and conversion rate. Fixing either one improves this number.'});
+      i:'You\'re spending S$'+cpe.toFixed(0)+' to enrol each new student. This comes down when you either get cheaper enquiries or convert more of the ones you already have.'});
   } else if(cpl<=BM.cpl){
     positives.push({p:'GOOD',stage:'✅ Ad Performance',
       a:'Ad cost per enrolment of S$'+cpe.toFixed(0)+' is within benchmark',
-      i:'Your ad spend is converting efficiently relative to industry norms for '+BM.label+'.'});
+      i:'Your ads are converting well relative to what you\'re spending. Keep the funnel healthy and this stays strong.'});
   }
 
   if(s.platforms.length<=1){
     issues.push({p:'LOW',stage:'📍 Channel Mix',
       a:'Add one organic channel — Google My Business is the highest ROI starting point for SG centres',
-      i:'Reduces paid dependency and lowers your blended CPL over time. Parents searching by area convert at higher intent.'});
+      i:'Relying only on paid ads means your enquiries stop the moment you pause spending. Google My Business and parent groups bring in enquiries for free and tend to convert better because the intent is higher.'});
   }
 
   issues.push({p:'LOW',stage:'📍 Tracking',
@@ -404,12 +404,12 @@ function calc() {
   while(issues.length<3){
     issues.push({p:'MEDIUM',stage:'📍 Growth',
       a:'Increase the volume of leads entering your funnel — your conversion is reasonable but volume limits growth',
-      i:'Even a 20% increase in monthly leads at your current conversion rate adds meaningful revenue.'});
+      i:'More enquiries at your current conversion rate means more enrolments without changing anything else. Focus on increasing your ad reach or adding a new channel.'});
   }
   while(positives.length<2){
     positives.push({p:'GOOD',stage:'✅ Foundation',
       a:'You\'re tracking your numbers — most SG centre owners can\'t answer these questions',
-      i:'Knowing your metrics is step one. The centres that grow fastest are the ones who measure and iterate.'});
+      i:'You can\'t improve what you don\'t measure. Start by asking every enquiry "how did you hear about us?" — it takes 5 seconds and tells you exactly where your best leads are coming from.'});
   }
 
   // Merge: issues first, then positives
@@ -476,7 +476,7 @@ function results() {
     {n:'Conv. Rate %',y:parseFloat((r.ctr*100).toFixed(1)),b:Math.round(r.BM.ctr*100)}
   ];
   if(r.hasTrial && r.trialCtr>0) bData.push({n:(r.isPreschool?'Tour':'Trial')+' Conv. %',y:r.trialCtr,b:r.BM.trialBm});
-  bData.push({n:'CPL (S$)',y:parseFloat(r.cpl.toFixed(0)),b:r.BM.cpl});
+  bData.push({n:'Cost/Enquiry (S$)',y:parseFloat(r.cpl.toFixed(0)),b:r.BM.cpl});
   bData.push({n:'Cost/Enrol (S$)',y:Math.min(parseFloat(r.cpe.toFixed(0)),999),b:r.BM.cpe});
 
   var maxB=Math.max.apply(null,bData.map(function(d){return Math.max(d.y,d.b)}))*1.2||100;
@@ -495,9 +495,9 @@ function results() {
     +'<div class="stat-card"><div class="stat-label">Total Leads/month</div><div class="stat-value">'+r.leads+'</div></div>'
     +'<div class="stat-card"><div class="stat-label">Enrolments/month</div><div class="stat-value">'+r.enrol+'</div></div>'
     +'<div class="stat-card"><div class="stat-label">Overall Conv. Rate</div><div class="stat-value '+(r.ctr>=r.BM.ctr?'good':'bad')+'">'+(r.ctr*100).toFixed(1)+'%</div><div class="stat-bench">Benchmark: '+Math.round(r.BM.ctr*100)+'%</div></div>'
-    +'<div class="stat-card"><div class="stat-label">Student LTV</div><div class="stat-value">S$'+r.ltv.toLocaleString()+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Value Per Student</div><div class="stat-value">S$'+r.ltv.toLocaleString()+'</div></div>'
     +(r.hasTrial&&r.trialCtr>0?'<div class="stat-card" style="grid-column:span 2"><div class="stat-label">'+(r.isPreschool?'Tour':'Trial')+' → Enrolment Rate</div><div class="stat-value '+(r.trialCtr>=r.BM.trialBm?'good':'bad')+'">'+r.trialCtr+'%</div><div class="stat-bench">Benchmark for '+esc(r.BM.label)+': '+r.BM.trialBm+'%</div></div>':'')
-    +'<div class="stat-card"><div class="stat-label">Blended CPL</div><div class="stat-value '+(r.cpl<=r.BM.cpl?'good':'bad')+'">S$'+r.cpl.toFixed(0)+'</div><div class="stat-bench">Benchmark: S$'+r.BM.cpl+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Cost Per Enquiry</div><div class="stat-value '+(r.cpl<=r.BM.cpl?'good':'bad')+'">S$'+r.cpl.toFixed(0)+'</div><div class="stat-bench">Benchmark: S$'+r.BM.cpl+'</div></div>'
     +'<div class="stat-card"><div class="stat-label">Ad Cost/Enrolment</div><div class="stat-value '+(r.cpe<=r.BM.cpe?'good':'bad')+'">S$'+r.cpe.toFixed(0)+'</div><div class="stat-bench">Benchmark: S$'+r.BM.cpe+'</div></div>'
     +'</div>';
 
@@ -574,7 +574,6 @@ function results() {
     +(parseFloat(s.adSpend)>=1000
       ?'<div class="cta-box"><div class="cta-title">Want us to verify your numbers?</div>'
         +'<p class="cta-body">Book a free 30-min live ad audit. We\'ll look at your actual Ads Manager <em>together</em> &#8212; you share your screen, we tell you exactly what\'s underperforming and why.</p>'
-        +'<p class="cta-note">&#128274; No login access required. You stay in control.</p>'
         +'<button class="cta-btn" id="ctaBtn" style="width:100%">Book My Free Live Audit &#8594;</button></div>'
       :'');
 }
