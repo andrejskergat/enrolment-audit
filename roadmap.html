@@ -222,6 +222,9 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.3}
         <label>Total Leads — Last 90 Days</label>
         <input class="inp" id="leads90" type="number" placeholder="e.g. 110">
       </div>
+      <div id="leadsTrendDisplay" style="font-size:11px;color:#64748b;margin-top:-6px;margin-bottom:8px;padding:8px 12px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;display:none;line-height:1.6">
+        <span id="leadsTrendText"></span>
+      </div>
       <div id="cpl90Display" style="font-size:11px;color:#64748b;margin-top:-6px;margin-bottom:8px;padding:6px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;display:none">
         Average CPL over 90 days: <strong id="cpl90Val" style="color:#0f172a"></strong>
         <span id="cplDiff" style="margin-left:6px;font-weight:600"></span>
@@ -284,6 +287,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.3}
     </div>
 
     <button class="gen-btn" id="genBtn" onclick="handleBtn()">Generate Roadmap →</button>
+    <button id="regenBtn" onclick="regenerate()" style="display:none;width:100%;padding:11px 0;margin-top:8px;background:none;border:1.5px solid #cbd5e1;border-radius:10px;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s">↺ Update Numbers & Regenerate</button>
   </div>
 
   <!-- RIGHT PANEL -->
@@ -318,6 +322,7 @@ function updateCPLDisplays(){
 
   var cpl30El = document.getElementById('cpl30Display');
   var cpl90El = document.getElementById('cpl90Display');
+  var trendEl = document.getElementById('leadsTrendDisplay');
 
   if(spend30 > 0 && leads30 > 0){
     var cpl30 = spend30 / leads30;
@@ -347,6 +352,35 @@ function updateCPLDisplays(){
     cpl90El.style.display = 'block';
   } else {
     cpl90El.style.display = 'none';
+  }
+
+  // Leads trend — compare last 30 days vs 90-day monthly average
+  if(leads90 > 0 && leads30 > 0){
+    var leadsAvgMo = leads90 / 3;
+    var leadsDiff  = leads30 - leadsAvgMo;
+    var leadsPct   = Math.round((leadsDiff / leadsAvgMo) * 100);
+    var absDiff    = Math.round(Math.abs(leadsDiff));
+    var trendText  = document.getElementById('leadsTrendText');
+
+    if(Math.abs(leadsPct) < 5){
+      // Consistent — neutral
+      trendText.innerHTML = '<span style="color:#64748b">Leads are consistent with your 90-day average ('+Math.round(leadsAvgMo)+'/month).</span>';
+      trendEl.style.borderColor = '#e2e8f0';
+      trendEl.style.background  = '#f8fafc';
+    } else if(leadsDiff < 0){
+      // Down — red flag
+      trendText.innerHTML = '<span style="color:#ef4444;font-weight:700">▼ '+Math.abs(leadsPct)+'% fewer leads this month</span> <span style="color:#64748b">— '+absDiff+' below your 90-day monthly average of '+Math.round(leadsAvgMo)+'. Something may have changed in the campaigns or this is a seasonal dip.</span>';
+      trendEl.style.borderColor = 'rgba(239,68,68,0.25)';
+      trendEl.style.background  = 'rgba(239,68,68,0.04)';
+    } else {
+      // Up — green but grounded
+      trendText.innerHTML = '<span style="color:#16a34a;font-weight:700">▲ '+leadsPct+'% above your 90-day average this month</span> <span style="color:#64748b">— '+absDiff+' more than the '+Math.round(leadsAvgMo)+'/month average. Could be seasonal or a creative that\'s working well. Worth noting, but we look at the 90-day average for projections.</span>';
+      trendEl.style.borderColor = 'rgba(34,197,94,0.25)';
+      trendEl.style.background  = 'rgba(34,197,94,0.04)';
+    }
+    trendEl.style.display = 'block';
+  } else {
+    trendEl.style.display = 'none';
   }
 }
 
@@ -396,12 +430,24 @@ function handleBtn(){
   if(_currentStep === 0){
     if(!compute()) return;
     document.getElementById('genBtn').style.display = 'none';
+    document.getElementById('regenBtn').style.display = 'block';
     showStep(1);
   } else if(_currentStep < 4){
     showStep(_currentStep + 1);
   } else if(_currentStep === 4){
     showStep(5);
   }
+}
+
+function regenerate(){
+  _currentStep = 0;
+  _stageData   = null;
+  _summaryHtml = '';
+  _ctxHtml     = '';
+  document.getElementById('rightPanel').innerHTML = '<div class="placeholder"><div class="placeholder-icon">📊</div><p>Fill in the client\'s numbers on the left and click Generate Roadmap</p></div>';
+  document.getElementById('regenBtn').style.display = 'none';
+  document.getElementById('genBtn').style.display   = 'block';
+  document.getElementById('genBtn').textContent     = 'Generate Roadmap \u2192';
 }
 
 function showStep(step){
@@ -531,7 +577,7 @@ function compute(){
   var ltv = fee * retention;
   var up  = calcUplift(rt, followUp);
 
-  var newCpl        = baseCPL * (1 - up.cplImprove);
+  var newCpl        = Math.min(baseCPL * (1 - up.cplImprove), cpl30 * 0.97); // never worse than current 30-day
   var newLeads      = adSpend / newCpl;
   var currentScheduled = scheduled || Math.round(leads * 0.25);
   var currentAttended  = attended  || Math.round(currentScheduled * 0.65);
@@ -567,7 +613,7 @@ function compute(){
 
   // Stages
   _stageData = [
-    { num:1, name:'Reduce Cost Per Lead', driver:'AAA Framework \u2014 smarter targeting + stronger creatives', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.25)', now:'S$'+cpl30.toFixed(0)+(has90&&Math.abs(cpl30-cpl90)>1?' (30d)':''), after:'S$'+newCpl.toFixed(0), pct:'-'+Math.round(up.cplImprove*100)+'%', whatWeDo:['Review every active ad \u2014 stop spending on what isn\u2019t working','Rewrite ad copy around what parents actually worry about','Narrow who sees the ads so budget goes to the right families','Test new ad formats to find what gets parents to reach out'], impact:'Projections are based on your '+(has90?'90-day average CPL of S$'+cpl90.toFixed(0):'current CPL of S$'+cpl30.toFixed(0))+'. With a '+Math.round(up.cplImprove*100)+'% reduction, your S$'+fmt(adSpend)+' budget could bring in '+Math.round(newLeads)+' enquiries instead of '+Math.round(leads90mo)+' per month \u2014 without spending more. Typically visible after 2\u20134 weeks of improved creatives.' },
+    { num:1, name:'Reduce Cost Per Lead', driver:'AAA Framework \u2014 smarter targeting + stronger creatives', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.25)', now:'S$'+baseCPL.toFixed(0)+(has90?' (90d avg)':''), after:'S$'+newCpl.toFixed(0), pct:'-'+Math.round(((baseCPL-newCpl)/baseCPL)*100)+'%', whatWeDo:['Review every active ad \u2014 stop spending on what isn\u2019t working','Rewrite ad copy around what parents actually worry about','Narrow who sees the ads so budget goes to the right families','Test new ad formats to find what gets parents to reach out'], impact:'Projections are based on your '+(has90?'90-day average CPL of S$'+cpl90.toFixed(0):'current CPL of S$'+cpl30.toFixed(0))+'. With a '+Math.round(up.cplImprove*100)+'% reduction, your S$'+fmt(adSpend)+' budget could bring in '+Math.round(newLeads)+' enquiries instead of '+Math.round(leads90mo)+' per month \u2014 without spending more. Typically visible after 2\u20134 weeks of improved creatives.' },
     { num:2, name:'Get More Enquiries to Book a '+twC, driver:'AAA Framework \u2014 5-second reply system + structured follow-up', color:'#60a5fa', bg:'rgba(96,165,250,0.08)', border:'rgba(96,165,250,0.25)', now:fmt(currentScheduled), after:fmt(Math.round(newScheduled)), pct:pctLabel(up.schedImprove), whatWeDo:[rt>60?'Set up 5-second WhatsApp reply system so no enquiry waits more than a few seconds':'Keep the fast reply \u2014 add after-hours coverage',followUp==='structured'?'Fine-tune the existing follow-up sequence timing':'Set up a Day 1 / Day 3 / Day 7 follow-up sequence for families who don\u2019t reply','Send a WhatsApp reminder the day before each '+tw+' so they don\u2019t forget','Personalise every message so it doesn\u2019t feel automated'], impact:'When families hear back in seconds and get a follow-up when they go quiet, more of them book a '+tw+'. That\u2019s '+Math.round(newScheduled-currentScheduled)+' more '+tw+'s scheduled per month from enquiries you\u2019re already paying for.' },
     { num:3, name:'Get More Booked '+twC+'s to Actually Show Up', driver:'AAA Framework \u2014 confirmation + show-up sequence', color:'#a78bfa', bg:'rgba(167,139,250,0.08)', border:'rgba(167,139,250,0.25)', now:fmt(currentAttended), after:fmt(Math.round(newAttended)), pct:pctLabel(up.attendImprove), whatWeDo:['Send a confirmation the moment they book \u2014 make them feel expected','Let them know what to expect on the '+tw+' so they arrive prepared','Send a personal reminder the day before \u2014 not a generic notification','Morning-of message with easy directions so nothing gets in the way'], impact:Math.round(newAttended-currentAttended)+' more families showing up per month from bookings you already have. Most no-shows aren\u2019t lost \u2014 they just needed one more nudge.' },
     { num:4, name:'Get More '+twC+' Families to Enrol', driver:'AAA Framework \u2014 post-'+tw+' conversation + follow-up process', color:'#22c55e', bg:'rgba(34,197,94,0.08)', border:'rgba(34,197,94,0.25)', now:fmt(enrolments), after:fmt(Math.round(newEnrolments)), pct:pctLabel(up.convImprove), whatWeDo:['Give your team a script for the post-'+tw+' conversation \u2014 handle the common hesitations on the spot','Make the next step clear before families leave','Follow up within 24 hours for families who didn\u2019t decide on the day','Share a parent message or two after the '+tw+' to reinforce their decision'], impact:'Going from '+enrolments+' to '+Math.round(newEnrolments)+' enrolments per month. Each extra student is worth S$'+fmt(ltv)+' over their time with you. That\u2019s S$'+fmt((Math.round(newEnrolments)-enrolments)*ltv)+' in additional value every month \u2014 just from families who already visited.' },
