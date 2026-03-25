@@ -558,8 +558,11 @@ function compute(){
   var followUp   = sv('followUp')||'once';
   var client     = document.getElementById('clientName').value||'Your Centre';
 
-  if(!selectedType||!adSpend||!leads||!enrolments){
-    alert('Please select a centre type and fill in ad spend, leads and enrolments.');
+  var _adSpendEl    = document.getElementById('adSpend').value;
+  var _leadsEl      = document.getElementById('leads').value;
+  var _enrolmentsEl = document.getElementById('enrolments').value;
+  if(!selectedType || _adSpendEl==='' || _leadsEl==='' || _enrolmentsEl===''){
+    alert('Please select a centre type and fill in ad spend, leads and enrolments. Enter 0 if a value is zero.');
     return false;
   }
 
@@ -577,7 +580,7 @@ function compute(){
   var ltv = fee * retention;
   var up  = calcUplift(rt, followUp);
 
-  var newCpl        = Math.min(baseCPL * (1 - up.cplImprove), cpl30 * 0.97); // never worse than current 30-day
+  var newCpl        = baseCPL * (1 - up.cplImprove); // 90-day avg reduced by uplift %
   var newLeads      = adSpend / newCpl;
   var currentScheduled = scheduled || Math.round(leads * 0.25);
   var currentAttended  = attended  || Math.round(currentScheduled * 0.65);
@@ -589,8 +592,21 @@ function compute(){
   var newAttended   = newScheduled * newAttendRate;
   var convRate      = attended > 0 && enrolments > 0 ? enrolments/attended : (enrolments/leads);
   var newConvRate   = Math.min(convRate * (1 + up.convImprove), 0.85);
-  var newEnrolments = newAttended * newConvRate;
+  var newEnrolmentsRaw = newAttended * newConvRate;
+
+  // Smart enrolment rounding — a student is a student, can't be 0.3 of a person.
+  // If the cascade improvements produce a fractional gain >= 0.3, credit 1 full enrolment.
+  // Scale down the threshold as enrolments grow (harder to add 1 at 20 than at 1).
+  var gainRaw = newEnrolmentsRaw - enrolments;
+  var threshold = enrolments <= 2 ? 0.25 : enrolments <= 5 ? 0.35 : 0.5;
+  var newEnrolments = gainRaw >= threshold
+    ? Math.max(Math.round(newEnrolmentsRaw), enrolments + 1)
+    : Math.round(newEnrolmentsRaw);
+  // Ensure we never show regression
+  newEnrolments = Math.max(newEnrolments, enrolments);
+
   var wastedBudget  = (baseCPL - newCpl) * leads90mo;
+  // Revenue uses whole enrolments — a student is either enrolled or not
   var monthlyGain   = (newEnrolments - enrolments) * ltv;
   var annualGain    = monthlyGain * 12;
   var cplVolatile   = has90 && Math.abs(cpl30 - cpl90) / cpl90 > 0.15;
@@ -616,15 +632,18 @@ function compute(){
     { num:1, name:'Reduce Cost Per Lead', driver:'AAA Framework \u2014 smarter targeting + stronger creatives', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.25)', now:'S$'+baseCPL.toFixed(0)+(has90?' (90d avg)':''), after:'S$'+newCpl.toFixed(0), pct:'-'+Math.round(((baseCPL-newCpl)/baseCPL)*100)+'%', whatWeDo:['Review every active ad \u2014 stop spending on what isn\u2019t working','Rewrite ad copy around what parents actually worry about','Narrow who sees the ads so budget goes to the right families','Test new ad formats to find what gets parents to reach out'], impact:'Projections are based on your '+(has90?'90-day average CPL of S$'+cpl90.toFixed(0):'current CPL of S$'+cpl30.toFixed(0))+'. With a '+Math.round(up.cplImprove*100)+'% reduction, your S$'+fmt(adSpend)+' budget could bring in '+Math.round(newLeads)+' enquiries instead of '+Math.round(leads90mo)+' per month \u2014 without spending more. Typically visible after 2\u20134 weeks of improved creatives.' },
     { num:2, name:'Get More Enquiries to Book a '+twC, driver:'AAA Framework \u2014 5-second reply system + structured follow-up', color:'#60a5fa', bg:'rgba(96,165,250,0.08)', border:'rgba(96,165,250,0.25)', now:fmt(currentScheduled), after:fmt(Math.round(newScheduled)), pct:pctLabel(up.schedImprove), whatWeDo:[rt>60?'Set up 5-second WhatsApp reply system so no enquiry waits more than a few seconds':'Keep the fast reply \u2014 add after-hours coverage',followUp==='structured'?'Fine-tune the existing follow-up sequence timing':'Set up a Day 1 / Day 3 / Day 7 follow-up sequence for families who don\u2019t reply','Send a WhatsApp reminder the day before each '+tw+' so they don\u2019t forget','Personalise every message so it doesn\u2019t feel automated'], impact:'When families hear back in seconds and get a follow-up when they go quiet, more of them book a '+tw+'. That\u2019s '+Math.round(newScheduled-currentScheduled)+' more '+tw+'s scheduled per month from enquiries you\u2019re already paying for.' },
     { num:3, name:'Get More Booked '+twC+'s to Actually Show Up', driver:'AAA Framework \u2014 confirmation + show-up sequence', color:'#a78bfa', bg:'rgba(167,139,250,0.08)', border:'rgba(167,139,250,0.25)', now:fmt(currentAttended), after:fmt(Math.round(newAttended)), pct:pctLabel(up.attendImprove), whatWeDo:['Send a confirmation the moment they book \u2014 make them feel expected','Let them know what to expect on the '+tw+' so they arrive prepared','Send a personal reminder the day before \u2014 not a generic notification','Morning-of message with easy directions so nothing gets in the way'], impact:Math.round(newAttended-currentAttended)+' more families showing up per month from bookings you already have. Most no-shows aren\u2019t lost \u2014 they just needed one more nudge.' },
-    { num:4, name:'Get More '+twC+' Families to Enrol', driver:'AAA Framework \u2014 post-'+tw+' conversation + follow-up process', color:'#22c55e', bg:'rgba(34,197,94,0.08)', border:'rgba(34,197,94,0.25)', now:fmt(enrolments), after:fmt(Math.round(newEnrolments)), pct:pctLabel(up.convImprove), whatWeDo:['Give your team a script for the post-'+tw+' conversation \u2014 handle the common hesitations on the spot','Make the next step clear before families leave','Follow up within 24 hours for families who didn\u2019t decide on the day','Share a parent message or two after the '+tw+' to reinforce their decision'], impact:'Going from '+enrolments+' to '+Math.round(newEnrolments)+' enrolments per month. Each extra student is worth S$'+fmt(ltv)+' over their time with you. That\u2019s S$'+fmt((Math.round(newEnrolments)-enrolments)*ltv)+' in additional value every month \u2014 just from families who already visited.' },
+    { num:4, name:'Get More '+twC+' Families to Enrol', driver:'AAA Framework \u2014 post-'+tw+' conversation + follow-up process', color:'#22c55e', bg:'rgba(34,197,94,0.08)', border:'rgba(34,197,94,0.25)', now:fmt(enrolments), after:fmt(newEnrolments), pct:(newEnrolments>enrolments?'+'+fmt(newEnrolments-enrolments)+' enrolment'+(newEnrolments-enrolments>1?'s':''):'No change'), whatWeDo:['Give your team a script for the post-'+tw+' conversation \u2014 handle the common hesitations on the spot','Make the next step clear before families leave','Follow up within 24 hours for families who didn\u2019t decide on the day','Share a parent message or two after the '+tw+' to reinforce their decision'], impact:(newEnrolments>enrolments ? 'Going from '+enrolments+' to '+newEnrolments+' enrolment'+(newEnrolments>1?'s':'')+' per month. Each additional student is worth S$'+fmt(ltv)+' over their time with you \u2014 S$'+fmt((newEnrolments-enrolments)*ltv)+' in extra value every month, just from families who already visited.' : 'Enrolment numbers are already strong relative to the funnel. Improvements in the earlier stages will feed more families through, and this process ensures more of them say yes.') },
   ];
 
   // Summary HTML
-  var extraE = Math.round(newEnrolments) - enrolments;
+  var extraE = newEnrolments - enrolments;
   var sh = '<div class="summary-card">';
   sh += '<div class="summary-headline">What '+client+'\u2019s Numbers Could Look Like in 30 Days</div>';
   sh += '<div class="summary-sub">'+(has90?'Based on your 90-day average CPL of S$'+cpl90.toFixed(0)+' as the baseline. ':'')+'These are estimates based on what we\u2019ve seen spending over S$10 million on ads in the last 36 months across 120+ education businesses in Singapore. The 30-day plan puts the foundations in place \u2014 most centres see the full impact in Month 2 and Month 3 as each stage compounds.</div>';
-  sh += '<div class="summary-numbers"><div class="sum-num"><div class="sum-val">'+Math.round(newEnrolments)+'</div><div class="sum-label">Enrolments/month<br><span style="color:#475569">vs '+enrolments+' now</span></div></div><div class="sum-num"><div class="sum-val">S$'+fmt(monthlyGain)+'</div><div class="sum-label">Additional monthly value<br><span style="color:#475569">at S$'+fmt(ltv)+' per student</span></div></div><div class="sum-num"><div class="sum-val">S$'+fmt(annualGain)+'</div><div class="sum-label">12-month opportunity<br><span style="color:#475569">compounded monthly</span></div></div></div>';
+  var enrolLabel = newEnrolments > enrolments
+    ? newEnrolments + ' <span style="font-size:14px;color:#16a34a">+' + (newEnrolments-enrolments) + '</span>'
+    : String(newEnrolments);
+  sh += '<div class="summary-numbers"><div class="sum-num"><div class="sum-val">'+enrolLabel+'</div><div class="sum-label">Enrolments/month<br><span style="color:#475569">vs '+enrolments+' now</span></div></div><div class="sum-num"><div class="sum-val">'+(monthlyGain>0?'S$'+fmt(monthlyGain):'—')+'</div><div class="sum-label">Additional monthly value<br><span style="color:#475569">at S$'+fmt(ltv)+' per student</span></div></div><div class="sum-num"><div class="sum-val">'+(annualGain>0?'S$'+fmt(annualGain):'—')+'</div><div class="sum-label">12-month opportunity<br><span style="color:#475569">compounded monthly</span></div></div></div>';
   if(extraE > 0 && ltv > 0) sh += '<div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px"><div style="font-size:18px;margin-top:2px">\u2713</div><div><div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:4px">The extra enrolments cover the investment \u2014 and then some</div><div style="font-size:12px;color:#475569;line-height:1.6">'+extraE+' additional enrolment'+(extraE>1?'s':'')+' per month at S$'+fmt(ltv)+' each = S$'+fmt(extraE*ltv)+'/month in added value. That more than covers working with us \u2014 and the gap compounds every month you stay ahead.</div></div></div>';
   sh += '<div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px"><div style="font-size:18px;margin-top:2px">\u26a0\ufe0f</div><div><div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:4px">What happens if nothing changes</div><div style="font-size:12px;color:#475569;line-height:1.6">Right now, a slow month, a school holiday, or a period of competition can wipe out enrolments with no system to catch the drop. At '+enrolments+' enrolments and S$'+fmt(ltv)+' per student, one bad month costs S$'+fmt(enrolments*ltv)+' in lifetime value.</div></div></div>';
   if(wastedBudget > 0) sh += '<div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px"><div style="font-size:20px">\ud83d\udd25</div><div><div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:2px">Ad spend going to waste every month</div><div style="font-size:12px;color:#64748b">S$'+fmt(wastedBudget)+' per month on ads that aren\u2019t pulling their weight. Tightening targeting alone starts recovering this in week one.</div></div></div>';
